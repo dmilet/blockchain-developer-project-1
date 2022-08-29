@@ -65,28 +65,40 @@ class Blockchain {
     _addBlock(block) {
         let self = this;
         return new Promise(async (resolve, reject) => {
-            block.time = new Date().getTime().toString().slice(0,-3)
-            block.height = self.height + 1
 
-            if (block.height > 0) {
-                block.previousBlockHash = self.chain[self.height].hash
-                console.log("previousBlockHash" + block.previousBlockHash);
-            }
+            self.validateChain().then (
+                function (errorLog) {
+                    if (errorLog.length > 0) {
+                        console.log("Invalid Chain");
+                        reject(Error("Invalid Chain " + JSON.stringify(errorLog)));
+                    } else {
+                        console.log("Valid chain");
+                        block.time = new Date().getTime().toString().slice(0,-3)
+                        block.height = self.height + 1
+            
+                        if (block.height > 0) {
+                            block.previousBlockHash = self.chain[self.height].hash
+                            console.log("previousBlockHash" + block.previousBlockHash);
+                        }
+            
+                        // the block hash doesn't include the hash itself
+                        let blockHeader = {}
+                        blockHeader['height'] = block.height;
+                        blockHeader['body'] = block.body;
+                        blockHeader['time'] = block.time;
+                        blockHeader['previousBlockHash'] = block.previousBlockHash;
+                        block.hash=SHA256(JSON.stringify(blockHeader)).toString();
+            
+                        console.log("block calculated hash " + block.hash);
+            
+                        self.chain.push(block);
+                        self.height = block.height
+                        resolve(block);
+                    }
+                }
+            );
 
-            // the block hash doesn't include the hash itself
-            let blockHeader = {}
-            blockHeader['height'] = block.height;
-            blockHeader['body'] = block.body;
-            blockHeader['time'] = block.time;
-            blockHeader['previousBlockHash'] = block.previousBlockHash;
-            block.hash=SHA256(JSON.stringify(blockHeader));
-
-            console.log("block calculated hash " + block.hash);
-
-            self.chain.push(block);
-            self.height = block.height
-            console.log("Block hash = " + block.hash);
-            resolve(block);
+            
         });
     }
 
@@ -128,22 +140,28 @@ class Blockchain {
         return new Promise(async (resolve, reject) => {
             let messageTime = parseInt(message.split(':')[1])
             let currentTime = parseInt(new Date().getTime().toString().slice(0,-3))
-            if (currentTime - messageTime > 1000*60*60) {
+            if (currentTime - messageTime > 5*60) {
                 reject (Error("Request signed more than 5 minutes ago"));
             } else {
-                //if (bitcoinMessage.verify(message,address,signature)) {
+                if (bitcoinMessage.verify(message,address,signature)) {
                     let blockData= {}
                     blockData['address'] = address;
                     blockData['message'] = message;
                     blockData['signature'] = signature;
                     blockData['star'] = star
                     let block = new BlockClass.Block(blockData);
-                    self._addBlock(block);
-
-                    resolve(block);
-                //} else {
+                    self._addBlock(block).then (
+                        function (addedBlock) {
+                            console.log("new block added : " + JSON.stringify(addedBlock));
+                            resolve(addedBlock);
+                        },
+                        function (error) {
+                            console.log("block not added : " + error);
+                        }
+                    );
+                } else {
                     reject (Error ("Invalid signature"));
-                //}
+                }
             }
         });
     }
@@ -242,11 +260,11 @@ class Blockchain {
                     }
                 } else {
                     // genesis block
-                    //console.log("validating genesis block");
+                    console.log("validating genesis block");
                     block.validate().then(
                         function(isValid)  { 
                             if (! isValid) {
-                                //console.log("block is invalid, adding to error log");
+                                console.log("block is invalid, adding to error log");
                                 errorLog.push(block);
                             }
                         }

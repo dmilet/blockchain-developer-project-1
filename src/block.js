@@ -40,7 +40,7 @@ class Block {
         return new Promise((resolve, reject) => {
             // Save in auxiliary variable the current block hash
             let currentHash = new String(self.hash);
-            //console.log("validate : current hash      " + currentHash);
+            console.log("validate : current hash      " + currentHash);
                                            
             // Recalculate the hash of the Block
             // the block hash doesn't include the hash itself
@@ -49,16 +49,16 @@ class Block {
             blockHeader['body'] = self.body;
             blockHeader['time'] = self.time;
             blockHeader['previousBlockHash'] = self.previousBlockHash;
-            let recalculatedHash = new String(SHA256(JSON.stringify(blockHeader)));
-            //console.log("validate : recalculated hash " + recalculatedHash);
+            let recalculatedHash = SHA256(JSON.stringify(blockHeader)).toString();
+            console.log("validate : recalculated hash " + recalculatedHash);
             // Comparing if the hashes changed
-            if (currentHash === recalculatedHash) {
-                //console.log("all good !");
+            if (currentHash == recalculatedHash) {
+                console.log("all good !");
                 // Returning the Block is valid
                 resolve (true);
             } else {
                 // Returning the Block is invalid
-                //console.log("not good");
+                console.log("not good");
                 resolve(false);
             }
         });
